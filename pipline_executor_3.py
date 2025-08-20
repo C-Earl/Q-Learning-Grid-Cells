@@ -20,6 +20,7 @@ def run(parameters: dict):
   ## Run Parameters ##
   ANIMATE_TRAINING = parameters['animate_training']
   VERBOSE_TRAINING = parameters['verbose_training']
+  ONLY_PHASE_1 = parameters['only_phase_1']
   MAZE_FILE = parameters['maze_file']
   GRID_SPIKES_FILE = parameters['grid_spikes_file']
   ASSOC_SPIKES_FILE = parameters['assoc_spikes_file']
@@ -123,6 +124,9 @@ def run(parameters: dict):
       pkl.dump(assoc_population, f)
   #################### END PHASE 1 ####################
 
+  if ONLY_PHASE_1:
+    print("ONLY PHASE 1 flag is set; Exiting.")
+    exit()
 
   #################### Phase 2: Training ####################
   # 1. Initialize SNN for Q-learning
@@ -215,7 +219,6 @@ def run(parameters: dict):
 
     return history, eps
 
-
   # Train SNN using STDP and Q-learning #
   universal_history = []
   ep_lengths = []
@@ -276,12 +279,13 @@ def run(parameters: dict):
 
 if __name__ == '__main__':
   GC_scales = np.array([3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, ])
-  np.random.seed(123786)
+  np.random.seed(123)
   p = {
     'plot': False,
     'animate_training': False,
     'verbose_training': False,
-    'maze_file': "7_7_maze_v2.pkl",
+    'only_phase_1': True,
+    'maze_file': "7_7_maze.pkl",
     'grid_spikes_file': "7_7_grid_spikes.pkl",
     'assoc_spikes_file': "7_7_assoc_spikes.pkl",
     'spike_analysis_file': "7_7_spike_analysis.pkl",
@@ -289,11 +293,11 @@ if __name__ == '__main__':
     'history_plot_file': "7_7_history_plot.png",
     'maze_size': (7, 7),
     'num_modules': 5,
-    'offsets_per_module': 3,
+    'offsets_per_module': 4,
     'scales': GC_scales,
-    'global_scale': 0.25,
-    'rotations': [0, np.pi / 2, (np.pi / 3) * 3, np.pi / 7],
-    'sharpness': 1.25,  # Should *not* go below 1
+    'global_scale': 1,
+    'rotations': [0, np.pi / 3, np.pi / 5, np.pi*3 / 5, np.pi / 7, np.pi*3 / 7, np.pi / 11],
+    'sharpness': 1.5,  # Should *not* go below 1
     'sim_time': 1000,  # ms
     'exc_size': 3000,
     'inh_size': 1,
@@ -304,7 +308,7 @@ if __name__ == '__main__':
       "exc_tc_decay": 20,  # AND decay for 20ms interval @ 15mv threshold
       "exc_tc_theta_decay": 10_000,
       "exc_theta_plus": 0,
-      "exc_thresh": -49,  #
+      "exc_thresh": -45,  #
       "inh_refrac": 1,
       "inh_reset": -64,
       "inh_tc_decay": 10_000,

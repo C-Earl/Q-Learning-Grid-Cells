@@ -10,6 +10,8 @@ from Association import Association
 from Environment import Grid_Cell_Maze_Environment
 from helper_functions import relevant_neurons, get_active_neurons
 
+import matplotlib
+matplotlib.use("Agg")
 
 def plot_training_history(history, save_file, p1_len, p2_len, p3_len, p4_len, p5_len):
   # Determine start position based on the provided lengths
@@ -158,8 +160,8 @@ def plot_position_spikes(position, grid_cells: GC_Population, assoc_cells: Assoc
   axs[0].bar(np.arange(gc_spikes.shape[0]), gc_spikes.sum(axis=1), color='blue')
   axs[0].set_ylim(0, 9)
   axs[0].set_title(f"Grid Cells Spikes at Position {position}")
-  axs[0].set_xlabel("Time (ms)")
-  axs[0].set_ylabel("Neuron ID")
+  axs[0].set_ylabel("Time (ms)")
+  axs[0].set_xlabel("Neuron ID")
 
   # Plot association cells spikes
   assoc_spikes = assoc_cells.maze_spike_trains[position]
@@ -214,7 +216,6 @@ def plot_position_active_cells(position, active_GC: dict, active_assoc: dict, gr
   axs[1].set_xticks(x_ticks)
   axs[1].set_xlim(-10, position_active_gc_spike_trains.shape[1]+10)
 
-
   plt.tight_layout()
   plt.savefig(POSITION_FULL_SAVE_FILE, dpi=500)
 
@@ -233,22 +234,45 @@ def plot_maze(maze_env: Grid_Cell_Maze_Environment, agent_coords, agent_img, sav
   plt.savefig(MAZE_FULL_SAVE_FILE, dpi=500)
 
 
+def plot_gc_grids(maze_env: Grid_Cell_Maze_Environment, grid_cell_inds, grid_cell_colors, grid_cells: GC_Population, save_file: str):
+  GRID_FULL_SAVE_FILE = os.path.join("./saves/plots", save_file)
+  fig, ax = plt.subplots(figsize=(7, 7))
+  maze_env.plot(ax=ax)
+  ax.set_title("Grid Cell Grids")
+  ax.set_xlabel("X Position")
+  ax.set_ylabel("Y Position")
+
+  plot_x_range = (-maze_env.width*2, maze_env.width*2)
+  plot_y_range = (-maze_env.height*2, maze_env.height*2)
+  for i, c in zip(grid_cell_inds, grid_cell_colors):
+    grid_cell = grid_cells.cell_by_index(i)
+    grid_cell.plot_peaks(plot_x_range, plot_y_range, color=c, ax=ax)
+    grid_cell.plot_closest_contour((4,4), ax=ax)
+
+  plt.xlim(-0.5, maze_env.width-0.5)
+  plt.ylim(-0.5, maze_env.height-0.5)
+
+  plt.savefig(GRID_FULL_SAVE_FILE, dpi=500)
+
+
 if __name__ == '__main__':
   with open('./saves/grid_cells/7_7_grid_spikes.pkl', 'rb') as f:
     grid_cells = pkl.load(f)
   with open('./saves/assoc_cells/7_7_assoc_spikes.pkl', 'rb') as f:
     assoc_cells = pkl.load(f)
-  with open('./saves/mazes/7_7_maze_v2.pkl', 'rb') as f:
+  with open('./saves/mazes/7_7_maze.pkl', 'rb') as f:
     maze = pkl.load(f)
   with open('./saves/history/7_7_history.pkl', 'rb') as f:
     history = pkl.load(f)
 
-  active_gc = get_active_neurons(maze.get_shape(), grid_cells.maze_spike_trains, threshold=4)
-  active_assoc = get_active_neurons(maze.get_shape(), assoc_cells.maze_spike_trains.numpy().transpose(0, 1, 3, 2), threshold=4)
-  plot_position_active_cells((1, 2), active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
-  exit()
+  active_gc = get_active_neurons(maze.get_shape(), grid_cells.maze_spike_trains, threshold=6)
+  active_assoc = get_active_neurons(maze.get_shape(), assoc_cells.maze_spike_trains.numpy().transpose(0, 1, 3, 2), threshold=6)
+  plot_position_active_cells((4, 4), active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
   plot_active_grid_cells(active_gc, '7_7_GC_analysis.png', maze_env=maze)
   plot_active_assoc_cells(active_assoc, '7_7_AC_analysis.png', maze_env=maze)
-  plot_position_spikes((1, 2), grid_cells, assoc_cells, '7_7_position_spikes.png')
+  plot_position_spikes((4, 4), grid_cells, assoc_cells, '7_7_position_spikes.png')
   plot_maze(maze, (1,2), './mouse.png', '7_7_maze.png')
   plot_training_history(history, '7_7_history.png', 25, 5, 25, 5, 5)
+  plot_gc_grids(maze, [99, 90, 81, 80], ['blue', 'green', 'red', 'purple'], grid_cells, '7_7_gc_grids.png')
+
+

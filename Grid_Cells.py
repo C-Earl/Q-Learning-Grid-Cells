@@ -168,7 +168,7 @@ class Grid_Cell:
           Z = mvn.pdf(np.dstack((X, Y)))
           Z = Z / self.max_activity
           cont_map = ax.contour(X, Y, Z, levels=10)
-      fig.colorbar(cont_map)
+      # fig.colorbar(cont_map)
 
     # Plot position
     if pos:
@@ -288,7 +288,7 @@ class GC_Population:
         offset_step_size = s / offsets_per_module
         base_x_offsets = []
         for k in range(1, offsets_per_module + 1):
-          base_x_offsets.append((offset_step_size * k) + 5)    # +5 to avoid universal overlap at origin
+          base_x_offsets.append((offset_step_size * k) + 20)    # to avoid universal overlap at origin
         base_y_offsets = base_x_offsets.copy()
         mod_x_offsets, mod_y_offsets = np.meshgrid(base_x_offsets, base_y_offsets)
         mod_x_offsets = mod_x_offsets.flatten()  # Transform into 1D arrays
