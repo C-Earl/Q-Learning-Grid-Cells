@@ -241,7 +241,7 @@ def run(parameters: dict):
     universal_history.append(history)
   print("PHASE 2 completed")
 
-  maze_env.maze.start_cell = maze_env.maze.get_cell(0, 9)  # Different corner
+  maze_env.maze.start_cell = maze_env.maze.get_cell(6, 0)  # Different corner
   print("PHASE 3")
   eps = 1.0
   for episode in range(WARMUP_EPISODES):
@@ -273,9 +273,6 @@ def run(parameters: dict):
   with open(HISTORY_FILE_PATH, "wb") as f:
     pkl.dump(universal_history, f)
 
-  print("Plotting training history...")
-  plot_training_history(HISTORY_FILE, HISTORY_PLOT_FILE, WARMUP_EPISODES, NUM_EPISODES, WARMUP_EPISODES, NUM_EPISODES, NUM_EPISODES)
-
 
 if __name__ == '__main__':
   GC_scales = np.array([3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, ])
@@ -284,7 +281,7 @@ if __name__ == '__main__':
     'plot': False,
     'animate_training': False,
     'verbose_training': False,
-    'only_phase_1': True,
+    'only_phase_1': False,
     'maze_file': "7_7_maze.pkl",
     'grid_spikes_file': "7_7_grid_spikes.pkl",
     'assoc_spikes_file': "7_7_assoc_spikes.pkl",

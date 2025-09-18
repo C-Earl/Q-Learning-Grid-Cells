@@ -288,7 +288,7 @@ class GC_Population:
         offset_step_size = s / offsets_per_module
         base_x_offsets = []
         for k in range(1, offsets_per_module + 1):
-          base_x_offsets.append((offset_step_size * k) + 20)    # to avoid universal overlap at origin
+          base_x_offsets.append((offset_step_size * k) + 10)    # to avoid universal overlap at origin
         base_y_offsets = base_x_offsets.copy()
         mod_x_offsets, mod_y_offsets = np.meshgrid(base_x_offsets, base_y_offsets)
         mod_x_offsets = mod_x_offsets.flatten()  # Transform into 1D arrays
@@ -362,6 +362,7 @@ class GC_Population:
           if spike_rate != 0:
             step_size = int(1 / spike_rate)  # number of ms between spikes
             spike_train[::step_size] = 1
+            spike_train[0] = 0  # avoid universal spiking at t=0
           spike_trains[i, j, k] = spike_train
     self.maze_spike_trains = spike_trains
     return spike_trains

@@ -107,10 +107,10 @@ class Maze_Environment():
           ax.text(row, column, 'START', color='white', fontsize=7, ha='center', va='center', fontweight='bold')
           ax.add_patch(square)
         elif cell == self.maze.end_cell:
-          square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='red', alpha=1)
+          square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='purple', alpha=1)
           ax.text(row, column, 'GOAL', color='white', fontsize=7, ha='center', va='center', fontweight='bold')
           ax.add_patch(square)
-        elif cell in self.maze.path:
+        elif cell in self.maze.path and path_color is not None:
           # ax.plot(row, column, marker='o', color=path_color, markersize=5)
           square = matplotlib.patches.Rectangle((row-0.5, column-0.5), 1, 1, linewidth=0, color=path_color, alpha=0.25)
           ax.add_patch(square)

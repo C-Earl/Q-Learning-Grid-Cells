@@ -4,6 +4,7 @@ from collections import defaultdict
 from matplotlib import gridspec
 import numpy as np
 import os
+import shutil
 
 from Grid_Cells import GC_Population
 from Association import Association
@@ -86,21 +87,21 @@ def plot_active_grid_cells(active_neurons: dict, save_file, maze_env: Grid_Cell_
   vmin = int(0)
   vmax = int(np.max(active_neurons_matrix))
   fig, axs = plt.subplots(1, 2, figsize=(14, 7))
-  im = axs[0].imshow(active_neurons_matrix, cmap='hot', interpolation='nearest',
+  im = axs[0].imshow(active_neurons_matrix, cmap='Blues', interpolation='nearest',
                   vmin=vmin, vmax=vmax,)
   axs[0].set_title("Number of Active Grid Cells per Position")
   axs[0].set_xlabel("X Position")
   axs[0].set_ylabel("Y Position")
   if maze_env:
-    maze_env.plot(ax=axs[0], path_color=(1,1,1,0))
+    maze_env.plot(ax=axs[0], path_color=None)
 
   # Plot overlap matrix
-  im = axs[1].imshow(overlap_matrix, cmap='hot', interpolation='nearest',
+  im = axs[1].imshow(overlap_matrix, cmap='Blues', interpolation='nearest',
                   vmin=vmin, vmax=vmax,)
   fig.tight_layout(w_pad=5.0)
   cbar = fig.colorbar(im, ax=axs, shrink=0.8)
   cbar.set_ticks(np.arange(vmin, vmax + 1, 2))
-  plt.title("Overlap Matrix (GC)")
+  plt.title("Number of Overlapping Active Grid Cells")
   plt.xlabel("Position 1")
   plt.ylabel("Position 2")
   plt.savefig(OVERLAP_FULL_SAVE_FILE, dpi=500)
@@ -131,21 +132,21 @@ def plot_active_assoc_cells(active_neurons: dict, save_file, maze_env: Grid_Cell
   vmin = int(0)
   vmax = int(np.max(active_neurons_matrix))
   fig, axs = plt.subplots(1, 2, figsize=(14, 7))
-  im = axs[0].imshow(active_neurons_matrix, cmap='hot', interpolation='nearest',
+  im = axs[0].imshow(active_neurons_matrix, cmap='Reds', interpolation='nearest',
                      vmin=vmin, vmax=vmax, )
-  axs[0].set_title("Number of Active Assoc Cells per Position")
+  axs[0].set_title("Number of Active Assoc. Cells per Position")
   axs[0].set_xlabel("X Position")
   axs[0].set_ylabel("Y Position")
   if maze_env:
-    maze_env.plot(ax=axs[0], path_color=(1, 1, 1, 0))
+    maze_env.plot(ax=axs[0], path_color=None)
 
   # Plot overlap matrix
-  im = axs[1].imshow(overlap_matrix, cmap='hot', interpolation='nearest',
+  im = axs[1].imshow(overlap_matrix, cmap='Reds', interpolation='nearest',
                      vmin=vmin, vmax=vmax, )
   fig.tight_layout(w_pad=5.0)
   cbar = fig.colorbar(im, ax=axs, shrink=0.8)
   cbar.set_ticks(np.arange(vmin, vmax + 1, 5))
-  plt.title("Overlap Matrix (GC)")
+  plt.title("Number of Overlapping Active Assoc. Cells")
   plt.xlabel("Position 1")
   plt.ylabel("Position 2")
   plt.savefig(OVERLAP_FULL_SAVE_FILE, dpi=500)
@@ -220,10 +221,6 @@ def plot_position_active_cells(position, active_GC: dict, active_assoc: dict, gr
   plt.savefig(POSITION_FULL_SAVE_FILE, dpi=500)
 
 
-# def plot_position_active_cells(active_GC: dict, active_assoc: dict, save_file: str, maze_env: Maze_Environment=None):
-#   pass
-
-
 def plot_maze(maze_env: Grid_Cell_Maze_Environment, agent_coords, agent_img, save_file: str):
   MAZE_FULL_SAVE_FILE = os.path.join("./saves/plots", save_file)
   fig, ax = plt.subplots(figsize=(7, 7))
@@ -255,6 +252,52 @@ def plot_gc_grids(maze_env: Grid_Cell_Maze_Environment, grid_cell_inds, grid_cel
   plt.savefig(GRID_FULL_SAVE_FILE, dpi=500)
 
 
+def plot_cell_voltage(voltages: np.ndarray, gc_spikes: np.ndarray, assoc_spikes: np.ndarray, position: tuple, asc_cells: np.ndarray,
+                      grid_cells: np.ndarray, colors, threshold: int, time_range: tuple = None):
+  position_voltages = voltages[position]
+
+  if time_range is None:
+    time_range = [0, position_voltages.shape[0]]
+
+  for c in asc_cells:
+    GRID_FULL_SAVE_FILE = os.path.join("./saves/plots/voltage_plots", f"pos_{position}_cell_{c}_trange_{time_range}.png")
+    cell_voltage = position_voltages.T[c][time_range[0]:time_range[1]]
+    grid_spikes = gc_spikes[position].T[:, time_range[0]:time_range[1]]
+    asc_spikes = assoc_spikes[position].T[:, time_range[0]:time_range[1]]
+
+    # Adjust voltages to represent spikes
+    cell_voltage[np.where(asc_spikes[c] == 1)] = -30  # Spike voltage
+
+    fig = plt.figure(figsize=(8, 6))
+    gs = gridspec.GridSpec(2, 1)
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax2 = fig.add_subplot(gs[1, 0])
+    ax1.plot(cell_voltage, color='blue')
+    ax1.margins(x=0)
+    ax1.set_title(f"Membrane Voltage of Cell {c} at Position {position}")
+    ax1.set_xlabel("Time (ms)")
+    ax1.set_ylabel("Membrane Voltage (mV)")
+    ax1.axhline(y=threshold, color='red', linestyle='--', linewidth=1)
+    ax1.set_xticks(np.arange(0, cell_voltage.shape[0]+1, 100))
+    ax1.set_ylim(-71, -43)
+
+    ax2.imshow(grid_spikes, aspect='auto', cmap="binary")
+    ax2.set_title(f"Raster Plot of Grid Cells")
+    ax2.set_xlabel("Time (ms)")
+    for gc, c in zip(grid_cells, colors):
+      spike_inds = np.where(grid_spikes[gc] >= 1)[0]
+      y = np.full(len(spike_inds), gc)
+      plt.scatter(spike_inds, y, color=c, s=3)
+    ax2.margins(x=0)
+    ax2.set_xticks(np.arange(0, cell_voltage.shape[0] + 1, 100))
+
+    plt.tight_layout()
+    plt.savefig(GRID_FULL_SAVE_FILE, dpi=500)
+    plt.clf()
+
+  return
+
+
 if __name__ == '__main__':
   with open('./saves/grid_cells/7_7_grid_spikes.pkl', 'rb') as f:
     grid_cells = pkl.load(f)
@@ -265,13 +308,30 @@ if __name__ == '__main__':
   with open('./saves/history/7_7_history.pkl', 'rb') as f:
     history = pkl.load(f)
 
+  choice_location = (4, 4)
+  active_assoc_cells = np.where(assoc_cells.maze_spike_trains[choice_location].T.sum(1) > 6)[0]
+  active_grid_cells = np.where(grid_cells.maze_spike_trains[choice_location].sum(1) > 6)[0]
+  gc_colors = plt.cm.get_cmap('tab20', len(active_grid_cells)).colors
+
+  if os.path.exists("./saves/plots/voltage_plots"):
+    shutil.rmtree("./saves/plots/voltage_plots")
+  os.mkdir("./saves/plots/voltage_plots")
+  plot_cell_voltage(assoc_cells.maze_voltages, grid_cells.maze_spike_trains.transpose(0, 1, 3, 2),
+                    assoc_cells.maze_spike_trains, choice_location,
+                    asc_cells=active_assoc_cells[0:10], grid_cells=active_grid_cells, colors=gc_colors, threshold=-45)
+
+  plot_cell_voltage(assoc_cells.maze_voltages, grid_cells.maze_spike_trains.transpose(0, 1, 3, 2),
+                    assoc_cells.maze_spike_trains, choice_location,
+                    asc_cells=[1678], grid_cells=active_grid_cells, colors=gc_colors, threshold=-45, time_range=(100, 300))
+
+
   active_gc = get_active_neurons(maze.get_shape(), grid_cells.maze_spike_trains, threshold=6)
   active_assoc = get_active_neurons(maze.get_shape(), assoc_cells.maze_spike_trains.numpy().transpose(0, 1, 3, 2), threshold=6)
-  plot_position_active_cells((4, 4), active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
+  plot_position_active_cells(choice_location, active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
   plot_active_grid_cells(active_gc, '7_7_GC_analysis.png', maze_env=maze)
   plot_active_assoc_cells(active_assoc, '7_7_AC_analysis.png', maze_env=maze)
-  plot_position_spikes((4, 4), grid_cells, assoc_cells, '7_7_position_spikes.png')
-  plot_maze(maze, (1,2), './mouse.png', '7_7_maze.png')
+  plot_position_spikes(choice_location, grid_cells, assoc_cells, '7_7_position_spikes.png')
+  plot_maze(maze, choice_location, './mouse.png', '7_7_maze.png')
   plot_training_history(history, '7_7_history.png', 25, 5, 25, 5, 5)
   plot_gc_grids(maze, [99, 90, 81, 80], ['blue', 'green', 'red', 'purple'], grid_cells, '7_7_gc_grids.png')
 
