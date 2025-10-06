@@ -1,5 +1,6 @@
 import pickle as pkl
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 from collections import defaultdict
 from matplotlib import gridspec
 import numpy as np
@@ -62,15 +63,20 @@ def plot_training_history(history, save_file, p1_len, p2_len, p3_len, p4_len, p5
   plt.savefig(FULL_SAVE_FILE, dpi=200)
 
 
-def plot_active_grid_cells(active_neurons: dict, save_file, maze_env: Grid_Cell_Maze_Environment=None, verbose=False):
+def plot_active_grid_cells(active_neurons: dict, num_gc: int, save_file, maze_env: Grid_Cell_Maze_Environment=None, verbose=False):
   maze_size = maze.get_shape()
   OVERLAP_FULL_SAVE_FILE = os.path.join("./saves/plots", save_file)
 
-  # Check if any two positions share 2 or more active neurons
+  # Cosine similarity of two positions
   active_list = list(active_neurons.items())
   overlap_matrix = np.zeros((len(active_list), len(active_list)))
   for i in range(len(active_list)):
     for j in range(i + 1, len(active_list)):
+      # vec1 = np.zeros(num_gc)
+      # vec1[active_list[i][1][0]] = 1
+      # vec2 = np.zeros(num_gc)
+      # vec2[active_list[j][1][0]] = 1
+      # overlap_matrix[i, j] = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
       pos1, data1 = active_list[i]
       pos2, data2 = active_list[j]
       if pos1 != pos2:
@@ -89,6 +95,8 @@ def plot_active_grid_cells(active_neurons: dict, save_file, maze_env: Grid_Cell_
   fig, axs = plt.subplots(1, 2, figsize=(14, 7))
   im = axs[0].imshow(active_neurons_matrix, cmap='Blues', interpolation='nearest',
                   vmin=vmin, vmax=vmax,)
+  cbar = fig.colorbar(im, ax=axs[0], shrink=0.8)
+  cbar.set_ticks(np.arange(vmin, vmax + 1, 2))
   axs[0].set_title("Number of Active Grid Cells per Position")
   axs[0].set_xlabel("X Position")
   axs[0].set_ylabel("Y Position")
@@ -97,9 +105,9 @@ def plot_active_grid_cells(active_neurons: dict, save_file, maze_env: Grid_Cell_
 
   # Plot overlap matrix
   im = axs[1].imshow(overlap_matrix, cmap='Blues', interpolation='nearest',
-                  vmin=vmin, vmax=vmax,)
+                  vmin=0, vmax=vmax,)
   fig.tight_layout(w_pad=5.0)
-  cbar = fig.colorbar(im, ax=axs, shrink=0.8)
+  cbar = fig.colorbar(im, ax=axs[1], shrink=0.8)
   cbar.set_ticks(np.arange(vmin, vmax + 1, 2))
   plt.title("Number of Overlapping Active Grid Cells")
   plt.xlabel("Position 1")
@@ -297,6 +305,80 @@ def plot_cell_voltage(voltages: np.ndarray, gc_spikes: np.ndarray, assoc_spikes:
 
   return
 
+def plot_training_history_avg(histories, save_file, p1_len, p2_len, p3_len, p4_len, p5_len):
+  # Determine start position based on the provided lengths
+  p1_start = 0
+  p1_end = 0+p1_len
+  p2_start = p1_len
+  p2_end = p2_start+p2_len
+  p3_start = p2_end
+  p3_end = p3_start+p3_len
+  p4_start = p3_end
+  p4_end = p4_start+p4_len
+  p5_start = p4_end
+  p5_end = p5_start+p5_len
+
+  FULL_SAVE_FILE = os.path.join("./saves/plots", save_file)
+
+  # Extract episode lengths and average delta Q values
+  ep_lengths = np.array([[len(ep) for ep in h] for h in histories])
+  avg_delta_q = np.array([[
+    np.mean([ep[i][4] if ep[i][4] != -1 else -0.001 for i in range(len(ep)-1)])
+    for ep in h] for h in histories])
+
+  fig = plt.figure(figsize=(8, 6))
+  gs = gridspec.GridSpec(2, 1)
+  ax1 = fig.add_subplot(gs[0, 0])
+  ax2 = fig.add_subplot(gs[1, 0])
+
+  # Plot episode lengths
+  length_mean = np.mean(ep_lengths, axis=0)
+  length_std = np.std(ep_lengths, axis=0)
+  ax1.set_title("Average Learning Curve")
+  ax1.set_xlabel("Episode")
+  ax1.set_ylabel("Average Steps")
+  ax1.plot(np.arange(p1_start, p1_end+1), length_mean[p1_start:p1_end+1], color='blue', label="Warmup")
+  ax1.fill_between(np.arange(p1_start, p1_end+1),
+                   length_mean[p1_start:p1_end+1] - length_std[p1_start:p1_end+1],
+                   length_mean[p1_start:p1_end+1] + length_std[p1_start:p1_end+1],
+                   color='blue', alpha=0.3)
+  ax1.plot(np.arange(p2_start, p2_end), length_mean[p2_start:p2_end], color='red', label="Active Learning")
+  ax1.fill_between(np.arange(p2_start, p2_end),
+                   length_mean[p2_start:p2_end] - length_std[p2_start:p2_end],
+                   length_mean[p2_start:p2_end] + length_std[p2_start:p2_end],
+                   color='red', alpha=0.3)
+  ax1.plot(np.arange(p3_start-1, p3_end+1), length_mean[p3_start-1:p3_end+1], color='blue', label="Warmup")
+  ax1.fill_between(np.arange(p3_start-1, p3_end+1),
+                   length_mean[p3_start-1:p3_end+1] - length_std[p3_start-1:p3_end+1],
+                   length_mean[p3_start-1:p3_end+1] + length_std[p3_start-1:p3_end+1],
+                   color='blue', alpha=0.3)
+  ax1.plot(np.arange(p4_start, p5_end), length_mean[p4_start:p5_end], color='red')
+  ax1.fill_between(np.arange(p4_start, p5_end),
+                   length_mean[p4_start:p5_end] - length_std[p4_start:p5_end],
+                   length_mean[p4_start:p5_end] + length_std[p4_start:p5_end],
+                   color='red', alpha=0.3)
+  # plt.fill_between(x, mean - std, mean + std, color='blue', alpha=0.3, label='±1 Std Dev')
+  ax1.axvline(x=p3_start-1, color='g', linestyle='--', label="Start Position Change")
+  ax1.axvline(x=p5_start-1, color='g', linestyle='--')
+  ax1.legend(loc="lower left")
+
+  # Plot average delta Q
+  dq_mean = np.mean(avg_delta_q, axis=0)
+  dq_std = np.std(avg_delta_q, axis=0)
+  ax2.set_title("Average Delta Q")
+  ax2.set_xlabel("Episode")
+  ax2.set_ylabel("Average Delta Q")
+  ax2.plot(dq_mean, color='purple', label="Average Delta-Q")
+  ax2.fill_between(np.arange(len(dq_mean)),
+                   dq_mean - dq_std,
+                   dq_mean + dq_std,
+                   color='purple', alpha=0.3)
+  ax2.axvline(x=p3_start-1, color='g', linestyle='--', label="Start Position Change")
+  ax2.axvline(x=p5_start-1, color='g', linestyle='--')
+  ax2.legend()
+  plt.tight_layout()
+  plt.savefig(FULL_SAVE_FILE, dpi=100)
+
 
 if __name__ == '__main__':
   with open('./saves/grid_cells/7_7_grid_spikes.pkl', 'rb') as f:
@@ -305,8 +387,8 @@ if __name__ == '__main__':
     assoc_cells = pkl.load(f)
   with open('./saves/mazes/7_7_maze.pkl', 'rb') as f:
     maze = pkl.load(f)
-  with open('./saves/history/7_7_history.pkl', 'rb') as f:
-    history = pkl.load(f)
+  # with open('./saves/history/7_7_history.pkl', 'rb') as f:
+  #   history = pkl.load(f)
 
   choice_location = (4, 4)
   active_assoc_cells = np.where(assoc_cells.maze_spike_trains[choice_location].T.sum(1) > 6)[0]
@@ -328,11 +410,16 @@ if __name__ == '__main__':
   active_gc = get_active_neurons(maze.get_shape(), grid_cells.maze_spike_trains, threshold=6)
   active_assoc = get_active_neurons(maze.get_shape(), assoc_cells.maze_spike_trains.numpy().transpose(0, 1, 3, 2), threshold=6)
   plot_position_active_cells(choice_location, active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
-  plot_active_grid_cells(active_gc, '7_7_GC_analysis.png', maze_env=maze)
+  plot_active_grid_cells(active_gc, grid_cells.n_cells, '7_7_GC_analysis.png', maze_env=maze)
   plot_active_assoc_cells(active_assoc, '7_7_AC_analysis.png', maze_env=maze)
   plot_position_spikes(choice_location, grid_cells, assoc_cells, '7_7_position_spikes.png')
   plot_maze(maze, choice_location, './mouse.png', '7_7_maze.png')
-  plot_training_history(history, '7_7_history.png', 25, 5, 25, 5, 5)
+  # plot_training_history(history, '7_7_history.png', 25, 5, 25, 5, 5)
   plot_gc_grids(maze, [99, 90, 81, 80], ['blue', 'green', 'red', 'purple'], grid_cells, '7_7_gc_grids.png')
 
-
+  # histories = []
+  # for i in range(50):
+  #   with open(f'./saves/history/7_7_{i}_history.pkl', 'rb') as f:
+  #     histories.append(pkl.load(f))
+  #
+  # plot_training_history_avg(histories, '7_7_history_avg.png', 25, 5, 25, 5, 5)

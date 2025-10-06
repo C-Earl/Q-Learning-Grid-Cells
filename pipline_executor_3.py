@@ -25,7 +25,6 @@ def run(parameters: dict):
   GRID_SPIKES_FILE = parameters['grid_spikes_file']
   ASSOC_SPIKES_FILE = parameters['assoc_spikes_file']
   HISTORY_FILE = parameters['history_file']
-  HISTORY_PLOT_FILE = parameters['history_plot_file']
   MAZE_SIZE = parameters['maze_size']
   SCALES = parameters['scales']
   ROTATIONS = parameters['rotations']
@@ -276,7 +275,6 @@ def run(parameters: dict):
 
 if __name__ == '__main__':
   GC_scales = np.array([3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, ])
-  np.random.seed(123)
   p = {
     'plot': False,
     'animate_training': False,
@@ -287,7 +285,6 @@ if __name__ == '__main__':
     'assoc_spikes_file': "7_7_assoc_spikes.pkl",
     'spike_analysis_file': "7_7_spike_analysis.pkl",
     'history_file': "7_7_history.pkl",
-    'history_plot_file': "7_7_history_plot.png",
     'maze_size': (7, 7),
     'num_modules': 5,
     'offsets_per_module': 4,
@@ -349,4 +346,8 @@ if __name__ == '__main__':
     'warmup_episodes': 25,
     'episodes': 5,
   }
-  run(p)
+
+  for i in range(50):
+    np.random.seed(i)
+    p["history_file"] = f"7_7_{i}_history.pkl"
+    run(p)
