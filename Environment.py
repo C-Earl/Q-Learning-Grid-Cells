@@ -77,7 +77,7 @@ class Maze_Environment():
     reward_trace[reward_trace == -np.inf] = 0  # Replace np.inf with 0
     return reward_trace.T
 
-  def plot(self, agent_coords=None, path_color='blue', q_table: dict = None, agent_img=None, state_behavior: np.ndarray = None, ax=None):
+  def plot(self, agent_coords=None, path_color='blue', q_table: dict = None, agent_img=None, line_width: int = 1.5, state_behavior: np.ndarray = None, zorder=0, ax=None):
     if ax is None:
       fig, ax = plt.subplots()
 
@@ -92,10 +92,10 @@ class Maze_Environment():
       agent_coords = agent_coords[::-1]
 
     # Box around maze
-    ax.plot([-0.5, self.width-1+0.5], [-0.5, -0.5], color='black')
-    ax.plot([-0.5, self.width-1+0.5], [self.height-1+0.5, self.height-1+0.5], color='black')
-    ax.plot([-0.5, -0.5], [-0.5, self.height-1+0.5], color='black')
-    ax.plot([self.width-1+0.5, self.width-1+0.5], [-0.5, self.height-1+0.5], color='black')
+    ax.plot([-0.5, self.width-1+0.5], [-0.5, -0.5], color='black', linewidth=line_width, zorder=zorder)
+    ax.plot([-0.5, self.width-1+0.5], [self.height-1+0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder)
+    ax.plot([-0.5, -0.5], [-0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder)
+    ax.plot([self.width-1+0.5, self.width-1+0.5], [-0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder)
 
     # Plot maze
     for row in range(self.height):
@@ -103,23 +103,23 @@ class Maze_Environment():
         # Path
         cell = self.maze[column, row]  # Transpose maze coordinates (just how the maze is stored)
         if cell == self.maze.start_cell:
-          square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='green', alpha=1)
-          ax.text(row, column, 'START', color='white', fontsize=7, ha='center', va='center', fontweight='bold')
+          square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='green', alpha=1, zorder=zorder)
+          ax.text(row, column, 'START', color='white', fontsize=7, ha='center', va='center', fontweight='bold', zorder=zorder)
           ax.add_patch(square)
         elif cell == self.maze.end_cell:
-          square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='purple', alpha=1)
-          ax.text(row, column, 'GOAL', color='white', fontsize=7, ha='center', va='center', fontweight='bold')
+          square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='purple', alpha=1, zorder=zorder)
+          ax.text(row, column, 'GOAL', color='white', fontsize=7, ha='center', va='center', fontweight='bold', zorder=zorder)
           ax.add_patch(square)
         elif cell in self.maze.path and path_color is not None:
           # ax.plot(row, column, marker='o', color=path_color, markersize=5)
-          square = matplotlib.patches.Rectangle((row-0.5, column-0.5), 1, 1, linewidth=0, color=path_color, alpha=0.25)
+          square = matplotlib.patches.Rectangle((row-0.5, column-0.5), 1, 1, linewidth=0, color=path_color, alpha=0.25, zorder=zorder)
           ax.add_patch(square)
 
         # Walls
         if Direction.S not in cell.open_walls:
-          ax.plot([row-0.5, row+0.5], [column+0.5, column+0.5], color='black')
+          ax.plot([row-0.5, row+0.5], [column+0.5, column+0.5], color='black', linewidth=line_width, zorder=zorder)
         if Direction.E not in cell.open_walls:
-          ax.plot([row+0.5, row+0.5], [column-0.5, column+0.5], color='black')
+          ax.plot([row+0.5, row+0.5], [column-0.5, column+0.5], color='black', linewidth=line_width, zorder=zorder)
 
         # Table
         if q_table:
@@ -127,17 +127,17 @@ class Maze_Environment():
             q_values = q_table[(column, row)]
           else:
             q_values = np.zeros(self.num_actions) # Actions are N, E, S, W
-          ax.text(row, column-0.4, f'{q_values[0]:.2f}S', ha='center', va='center')
-          ax.text(row+0.4, column, f'{q_values[1]:.2f}E', ha='center', va='center', rotation=90)
-          ax.text(row, column+0.4, f'{q_values[2]:.2f}N', ha='center', va='center')
-          ax.text(row-0.4, column, f'{q_values[3]:.2f}W', ha='center', va='center', rotation=90)
+          ax.text(row, column-0.4, f'{q_values[0]:.2f}S', ha='center', va='center', zorder=zorder)
+          ax.text(row+0.4, column, f'{q_values[1]:.2f}E', ha='center', va='center', rotation=90, zorder=zorder)
+          ax.text(row, column+0.4, f'{q_values[2]:.2f}N', ha='center', va='center', zorder=zorder)
+          ax.text(row-0.4, column, f'{q_values[3]:.2f}W', ha='center', va='center', rotation=90, zorder=zorder)
 
         if state_behavior is not None:
           activity = state_behavior[column, row]
-          ax.text(row, column+0.2, f'{activity[0]}', ha='center', va='center')
-          ax.text(row+0.2, column, f'{activity[1]}', ha='center', va='center')
-          ax.text(row, column-0.2, f'{activity[2]}', ha='center', va='center')
-          ax.text(row-0.2, column, f'{activity[3]}', ha='center', va='center')
+          ax.text(row, column+0.2, f'{activity[0]}', ha='center', va='center', zorder=zorder)
+          ax.text(row+0.2, column, f'{activity[1]}', ha='center', va='center', zorder=zorder)
+          ax.text(row, column-0.2, f'{activity[2]}', ha='center', va='center', zorder=zorder)
+          ax.text(row-0.2, column, f'{activity[3]}', ha='center', va='center', zorder=zorder)
 
     # Plot agent
     if agent_img and agent_coords is not None:

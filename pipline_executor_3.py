@@ -87,6 +87,7 @@ def run(parameters: dict):
     print("Saving grid cell spikes to file:", GRID_SPIKES_FILE_PATH)
     with open(GRID_SPIKES_FILE_PATH, 'wb') as f:
       pkl.dump(gc_population, f)
+    exit()
 
 
   # Initialize Assoc. Cell Population & Spike Trains #
@@ -277,7 +278,7 @@ if __name__ == '__main__':
   GC_scales = np.array([3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, ])
   p = {
     'plot': False,
-    'animate_training': False,
+    'animate_training': True,
     'verbose_training': False,
     'only_phase_1': False,
     'maze_file': "7_7_maze.pkl",

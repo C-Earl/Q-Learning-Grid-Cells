@@ -101,7 +101,7 @@ def plot_active_grid_cells(active_neurons: dict, num_gc: int, save_file, maze_en
   axs[0].set_xlabel("X Position")
   axs[0].set_ylabel("Y Position")
   if maze_env:
-    maze_env.plot(ax=axs[0], path_color=None)
+    maze_env.plot(ax=axs[0], path_color=None, line_width=5)
 
   # Plot overlap matrix
   im = axs[1].imshow(overlap_matrix, cmap='Blues', interpolation='nearest',
@@ -146,7 +146,7 @@ def plot_active_assoc_cells(active_neurons: dict, save_file, maze_env: Grid_Cell
   axs[0].set_xlabel("X Position")
   axs[0].set_ylabel("Y Position")
   if maze_env:
-    maze_env.plot(ax=axs[0], path_color=None)
+    maze_env.plot(ax=axs[0], path_color=None, line_width=5)
 
   # Plot overlap matrix
   im = axs[1].imshow(overlap_matrix, cmap='Reds', interpolation='nearest',
@@ -380,46 +380,68 @@ def plot_training_history_avg(histories, save_file, p1_len, p2_len, p3_len, p4_l
   plt.savefig(FULL_SAVE_FILE, dpi=100)
 
 
+def plot_GC_module(grid_cells, maze, save_file='gc_modules.png'):
+  FULL_SAVE_FILE = os.path.join("./saves/plots", save_file)
+
+  fig = plt.figure(figsize=(8, 8))
+  gs = gridspec.GridSpec(2, 2)
+  ax1 = fig.add_subplot(gs[0, 0])
+  ax2 = fig.add_subplot(gs[1, 0])
+  ax3 = fig.add_subplot(gs[0, 1])
+  ax4 = fig.add_subplot(gs[1, 1])
+
+  module_inds = [0]
+  colors = ['red', 'blue', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan', 'yellow', 'magenta', 'teal', 'lime', 'navy', 'maroon']
+  for i, ax in zip(module_inds, [ax1]):
+    gc_module = grid_cells.modules[i]
+    maze.plot(ax=ax)
+    # for i, gc in enumerate(gc_module.grid_cells[0:]):
+    #   gc.plot_grid_lines([-30, +30], [-30, +30], color=colors[i], ax=ax)
+    for i, gc in enumerate(gc_module.grid_cells[0:]):
+      gc.plot_peaks([-30, +30], [-30, +30], color=colors[i], ax=ax)
+
+    ax.set_xlim(-0.5, maze.width - 0.5)
+    ax.set_ylim(-0.5, maze.height - 0.5)
+
+  plt.tight_layout()
+  plt.savefig(FULL_SAVE_FILE, dpi=300)
+
 if __name__ == '__main__':
-  with open('./saves/grid_cells/7_7_grid_spikes.pkl', 'rb') as f:
+  with open('saves/grid_cells/7_7_grid_spikes.pkl', 'rb') as f:
     grid_cells = pkl.load(f)
-  with open('./saves/assoc_cells/7_7_assoc_spikes.pkl', 'rb') as f:
-    assoc_cells = pkl.load(f)
+  # with open('./saves/assoc_cells/7_7_assoc_spikes.pkl', 'rb') as f:
+  #   assoc_cells = pkl.load(f)
   with open('./saves/mazes/7_7_maze.pkl', 'rb') as f:
     maze = pkl.load(f)
   # with open('./saves/history/7_7_history.pkl', 'rb') as f:
   #   history = pkl.load(f)
 
-  choice_location = (4, 4)
-  active_assoc_cells = np.where(assoc_cells.maze_spike_trains[choice_location].T.sum(1) > 6)[0]
-  active_grid_cells = np.where(grid_cells.maze_spike_trains[choice_location].sum(1) > 6)[0]
-  gc_colors = plt.cm.get_cmap('tab20', len(active_grid_cells)).colors
+  plot_GC_module(grid_cells, maze, save_file='7_7_gc_modules.png')
 
-  if os.path.exists("./saves/plots/voltage_plots"):
-    shutil.rmtree("./saves/plots/voltage_plots")
-  os.mkdir("./saves/plots/voltage_plots")
-  plot_cell_voltage(assoc_cells.maze_voltages, grid_cells.maze_spike_trains.transpose(0, 1, 3, 2),
-                    assoc_cells.maze_spike_trains, choice_location,
-                    asc_cells=active_assoc_cells[0:10], grid_cells=active_grid_cells, colors=gc_colors, threshold=-45)
-
-  plot_cell_voltage(assoc_cells.maze_voltages, grid_cells.maze_spike_trains.transpose(0, 1, 3, 2),
-                    assoc_cells.maze_spike_trains, choice_location,
-                    asc_cells=[1678], grid_cells=active_grid_cells, colors=gc_colors, threshold=-45, time_range=(100, 300))
-
-
-  active_gc = get_active_neurons(maze.get_shape(), grid_cells.maze_spike_trains, threshold=6)
-  active_assoc = get_active_neurons(maze.get_shape(), assoc_cells.maze_spike_trains.numpy().transpose(0, 1, 3, 2), threshold=6)
-  plot_position_active_cells(choice_location, active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
-  plot_active_grid_cells(active_gc, grid_cells.n_cells, '7_7_GC_analysis.png', maze_env=maze)
-  plot_active_assoc_cells(active_assoc, '7_7_AC_analysis.png', maze_env=maze)
-  plot_position_spikes(choice_location, grid_cells, assoc_cells, '7_7_position_spikes.png')
-  plot_maze(maze, choice_location, './mouse.png', '7_7_maze.png')
-  # plot_training_history(history, '7_7_history.png', 25, 5, 25, 5, 5)
-  plot_gc_grids(maze, [99, 90, 81, 80], ['blue', 'green', 'red', 'purple'], grid_cells, '7_7_gc_grids.png')
-
-  # histories = []
-  # for i in range(50):
-  #   with open(f'./saves/history/7_7_{i}_history.pkl', 'rb') as f:
-  #     histories.append(pkl.load(f))
+  # choice_location = (4, 4)
+  # active_assoc_cells = np.where(assoc_cells.maze_spike_trains[choice_location].T.sum(1) > 6)[0]
+  # active_grid_cells = np.where(grid_cells.maze_spike_trains[choice_location].sum(1) > 6)[0]
+  # gc_colors = plt.cm.get_cmap('tab20', len(active_grid_cells)).colors
   #
-  # plot_training_history_avg(histories, '7_7_history_avg.png', 25, 5, 25, 5, 5)
+  # if os.path.exists("./saves/plots/voltage_plots"):
+  #   shutil.rmtree("./saves/plots/voltage_plots")
+  # os.mkdir("./saves/plots/voltage_plots")
+  # plot_cell_voltage(assoc_cells.maze_voltages, grid_cells.maze_spike_trains.transpose(0, 1, 3, 2),
+  #                   assoc_cells.maze_spike_trains, choice_location,
+  #                   asc_cells=active_assoc_cells[0:10], grid_cells=active_grid_cells, colors=gc_colors, threshold=-45)
+  #
+  # plot_cell_voltage(assoc_cells.maze_voltages, grid_cells.maze_spike_trains.transpose(0, 1, 3, 2),
+  #                   assoc_cells.maze_spike_trains, choice_location,
+  #                   asc_cells=[1678], grid_cells=active_grid_cells, colors=gc_colors, threshold=-45, time_range=(100, 300))
+  #
+  #
+  # active_gc = get_active_neurons(maze.get_shape(), grid_cells.maze_spike_trains, threshold=6)
+  # active_assoc = get_active_neurons(maze.get_shape(), assoc_cells.maze_spike_trains.numpy().transpose(0, 1, 3, 2), threshold=6)
+  # plot_position_active_cells(choice_location, active_gc, active_assoc, grid_cells, assoc_cells, '7_7_position_active_cells.png')
+  # plot_active_grid_cells(active_gc, grid_cells.n_cells, '7_7_GC_analysis.png', maze_env=maze)
+  # plot_active_assoc_cells(active_assoc, '7_7_AC_analysis.png', maze_env=maze)
+  # plot_position_spikes(choice_location, grid_cells, assoc_cells, '7_7_position_spikes.png')
+  # plot_maze(maze, choice_location, './mouse.png', '7_7_maze.png')
+  # plot_training_history(history, '7_7_history.png', 25, 5, 25, 5, 5)
+  # plot_gc_grids(maze, [99, 90, 81, 80], ['blue', 'green', 'red', 'purple'], grid_cells, '7_7_gc_grids.png')
+

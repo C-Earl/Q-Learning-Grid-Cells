@@ -51,14 +51,15 @@ class Grid_Cell:
 
   # Translate from grid cell coordinates to plot coordinates
   def hex_to_plot_transform(self, p):
-    x = p[0] * self.scale * math.cos(self.rotation) - p[1] * self.scale * math.sin(self.rotation) + self.x_offset
-    y = p[0] * self.scale * math.sin(self.rotation) + p[1] * self.scale * math.cos(self.rotation) + self.y_offset
+    x = (p[0] + self.x_offset) * self.scale * math.cos(self.rotation) - (p[1] + self.y_offset) * self.scale * math.sin(self.rotation)
+    y = (p[0] + self.x_offset) * self.scale * math.sin(self.rotation) + (p[1] + self.y_offset) * self.scale * math.cos(self.rotation)
     return [x, y]
 
   # Translate from plot coordinates to grid cell coordinates
   def plot_to_hex_transform(self, p):
-    x = ((p[0] - self.x_offset) * math.cos(self.rotation) + (p[1] - self.y_offset) * math.sin(self.rotation)) / self.scale
-    y = ((p[1] - self.y_offset) * math.cos(self.rotation) - (p[0] - self.x_offset) * math.sin(self.rotation)) / self.scale
+    x = ( ( (p[0] * math.cos(self.rotation)) + (p[1] * math.sin(self.rotation)) ) / self.scale ) - self.x_offset
+    y = ( ( -(p[0] * math.sin(self.rotation)) + (p[1] * math.cos(self.rotation)) ) / self.scale ) - self.y_offset
+    y /= np.sqrt(0.75)
     return [x, y]
 
   # Determine range of grid indices for a given range of plot coordinates
@@ -124,7 +125,30 @@ class Grid_Cell:
     else:
       return activity
 
-  # Plot firing peaks for grid cell
+  def plot_grid_lines(self, x_range, y_range, color='lightgray', ax=None):
+    # Indices relative to grid-cells
+    # Do this to find range of firing peaks to plot
+    grid_x_range, grid_y_range = self.grid_indices_range(x_range, y_range)
+    grid_indices = self.base_grid_indices(grid_x_range, grid_y_range)
+    hex_indices = self.base_to_hex_transform(grid_indices)
+    x, y = self.hex_to_plot_transform([hex_indices[:, :, 0], hex_indices[:, :, 1]])
+    plt_indices = np.stack((x, y), axis=-1)
+
+    for i in range(plt_indices.shape[0]-1):
+      for j in range(plt_indices.shape[1]-1):
+        x_, y_ = plt_indices[i, j]
+        x_r, y_r = plt_indices[i, j+1]
+        x_u, y_u = plt_indices[i+1, j]
+        ax.plot([x_, x_r], [y_, y_r], '-', alpha=0.2, color=color, markersize=5)
+        ax.plot([x_, x_u], [y_, y_u], '-', alpha=0.2, color=color, markersize=5)
+        if grid_indices[i, j, 1] % 2 == 0:
+          x_dr, y_dr = plt_indices[i+1, j+1]
+          ax.plot([x_, x_dr], [y_, y_dr], '-', alpha=0.2, color=color, markersize=5)
+          if j > 0:
+            x_dl, y_dl = plt_indices[i+1, j-1]
+            ax.plot([x_, x_dl], [y_, y_dl], '-', alpha=0.2, color=color, markersize=5)
+
+  # Plot firing peaks for grid cellx
   def plot_peaks(self, x_range, y_range, color='blue', contours=False, pos=None, fig=None, ax=None):
     # Indices relative to grid-cells
     # Do this to find range of firing peaks to plot
@@ -137,21 +161,7 @@ class Grid_Cell:
     # Plot peaks
     x = plt_indices[:,:, 0].flatten()
     y = plt_indices[:,:, 1].flatten()
-    plt.scatter(x, y, s=5, alpha=1, color=color)
-    # x_ll, y_ll = plt_indices[1, 0]
-    for i in range(plt_indices.shape[0]-1):
-      for j in range(plt_indices.shape[1]-1):
-        x, y = plt_indices[i, j]
-        x_r, y_r = plt_indices[i, j+1]
-        x_u, y_u = plt_indices[i+1, j]
-        ax.plot([x, x_r], [y, y_r], '-', alpha=0.2, color=color, markersize=5)
-        ax.plot([x, x_u], [y, y_u], '-', alpha=0.2, color=color, markersize=5)
-        if grid_indices[i, j, 1] % 2 == 0:
-          x_dr, y_dr = plt_indices[i+1, j+1]
-          ax.plot([x, x_dr], [y, y_dr], '-', alpha=0.2, color=color, markersize=5)
-          if j > 0:
-            x_dl, y_dl = plt_indices[i+1, j-1]
-            ax.plot([x, x_dl], [y, y_dl], '-', alpha=0.2, color=color, markersize=5)
+    ax.scatter(x, y, s=5, color=color)
 
     ax.set_xlim(x_range[0], x_range[1])
     ax.set_ylim(y_range[0], y_range[1])
@@ -283,13 +293,20 @@ class GC_Population:
       for j in range(num_modules):
         # Create grid of uniformly spaced offsets
         x_offsets = []
-        y_offsets = []
         s = scales[j] * global_scale
         offset_step_size = s / offsets_per_module
         base_x_offsets = []
         for k in range(1, offsets_per_module + 1):
-          base_x_offsets.append((offset_step_size * k) + 10)    # to avoid universal overlap at origin
-        base_y_offsets = base_x_offsets.copy()
+          base_x_offsets.append((offset_step_size * k) + 10)    # +10 to avoid universal overlap at origin
+
+        y_offsets = []
+        s = scales[j] * global_scale
+        offset_step_size = s*np.sqrt(0.75) / offsets_per_module  # vertical spacing adjusted for hexagonal grid
+        base_y_offsets = []
+        for k in range(1, offsets_per_module + 1):
+          base_y_offsets.append((offset_step_size * k) + 10)
+
+        # Shift offsets to move along hexagonal grid rather than square grid
         mod_x_offsets, mod_y_offsets = np.meshgrid(base_x_offsets, base_y_offsets)
         mod_x_offsets = mod_x_offsets.flatten()  # Transform into 1D arrays
         mod_y_offsets = mod_y_offsets.flatten()
