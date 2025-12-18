@@ -2,6 +2,8 @@ from collections import defaultdict
 
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 # Generate random weights for the grid cell to reservoir connections
 def generate_grid_out_weights(in_size, out_size, sparsity, w_range):

@@ -92,10 +92,10 @@ class Maze_Environment():
       agent_coords = agent_coords[::-1]
 
     # Box around maze
-    ax.plot([-0.5, self.width-1+0.5], [-0.5, -0.5], color='black', linewidth=line_width, zorder=zorder)
-    ax.plot([-0.5, self.width-1+0.5], [self.height-1+0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder)
-    ax.plot([-0.5, -0.5], [-0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder)
-    ax.plot([self.width-1+0.5, self.width-1+0.5], [-0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder)
+    ax.plot([-0.5, self.width-1+0.5], [-0.5, -0.5], color='black', linewidth=line_width, zorder=zorder+.1)
+    ax.plot([-0.5, self.width-1+0.5], [self.height-1+0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder+.1)
+    ax.plot([-0.5, -0.5], [-0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder+.1)
+    ax.plot([self.width-1+0.5, self.width-1+0.5], [-0.5, self.height-1+0.5], color='black', linewidth=line_width, zorder=zorder+.1)
 
     # Plot maze
     for row in range(self.height):
@@ -104,11 +104,11 @@ class Maze_Environment():
         cell = self.maze[column, row]  # Transpose maze coordinates (just how the maze is stored)
         if cell == self.maze.start_cell:
           square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='green', alpha=1, zorder=zorder)
-          ax.text(row, column, 'START', color='white', fontsize=7, ha='center', va='center', fontweight='bold', zorder=zorder)
+          ax.text(row, column, 'START', color='white', fontsize=7, ha='center', va='center', fontweight='bold', zorder=zorder+.1)
           ax.add_patch(square)
         elif cell == self.maze.end_cell:
           square = matplotlib.patches.Rectangle((row - 0.5, column - 0.5), 1, 1, linewidth=0, color='purple', alpha=1, zorder=zorder)
-          ax.text(row, column, 'GOAL', color='white', fontsize=7, ha='center', va='center', fontweight='bold', zorder=zorder)
+          ax.text(row, column, 'GOAL', color='white', fontsize=7, ha='center', va='center', fontweight='bold', zorder=zorder+.1)
           ax.add_patch(square)
         elif cell in self.maze.path and path_color is not None:
           # ax.plot(row, column, marker='o', color=path_color, markersize=5)
@@ -117,9 +117,9 @@ class Maze_Environment():
 
         # Walls
         if Direction.S not in cell.open_walls:
-          ax.plot([row-0.5, row+0.5], [column+0.5, column+0.5], color='black', linewidth=line_width, zorder=zorder)
+          ax.plot([row-0.5, row+0.5], [column+0.5, column+0.5], color='black', linewidth=line_width, zorder=zorder+.1)
         if Direction.E not in cell.open_walls:
-          ax.plot([row+0.5, row+0.5], [column-0.5, column+0.5], color='black', linewidth=line_width, zorder=zorder)
+          ax.plot([row+0.5, row+0.5], [column-0.5, column+0.5], color='black', linewidth=line_width, zorder=zorder+.1)
 
         # Table
         if q_table:
@@ -142,7 +142,7 @@ class Maze_Environment():
     # Plot agent
     if agent_img and agent_coords is not None:
       img = matplotlib.image.imread(agent_img)
-      ax.imshow(img, extent=(agent_coords[0]-0.5, agent_coords[0]+0.5, agent_coords[1]-0.5, agent_coords[1]+0.5), zorder=2)
+      ax.imshow(img, extent=(agent_coords[0]-0.5, agent_coords[0]+0.5, agent_coords[1]-0.5, agent_coords[1]+0.5), zorder=zorder)
     elif agent_coords is not None:
       ax.plot(agent_coords[0], agent_coords[1], 'yo')
 

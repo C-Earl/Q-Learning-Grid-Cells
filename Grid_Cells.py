@@ -10,13 +10,14 @@ def rotate_matrix(a):
 
 
 class Grid_Cell:
-  def __init__(self, x_offset, y_offset, rotation, scale=1, sharpness=1, max_firing_rate=8):
+  def __init__(self, x_offset, y_offset, rotation, scale=1, sharpness=1, max_firing_rate=8, global_scale=1):
     self.x_offset = x_offset    # Offset in x-direction
     self.y_offset = y_offset    # Offset in y-direction
     self.rotation = rotation    # Rotation in radians
     self.scale = scale      # How far apart peaks are
     self.sharpness = sharpness  # How 'sharp' distribution for firing peaks are
-    self.max_activity = max_firing_rate  # Max firing rate (hz) of cell
+    self.global_scale = global_scale  # Global scaling factor for grid cell scale
+    self.activity_cutoff = 0.1  # Activity cutoff below which activity is 0
 
     # Sharpness should not be below 1
     if self.sharpness < 1:
@@ -28,7 +29,7 @@ class Grid_Cell:
     self.cov = [[var, 0], [0, var]]
 
     # Save max activity for normalization
-    self.max_activity = multivariate_normal.pdf([0, 0], [0, 0], self.cov)
+    self.max_activity = multivariate_normal.pdf(x=[0, 0], mean=[0, 0], cov=self.cov)
 
   # Define base grid indices for hexagonal grid
   def base_grid_indices(self, x_range, y_range):
@@ -51,14 +52,21 @@ class Grid_Cell:
 
   # Translate from grid cell coordinates to plot coordinates
   def hex_to_plot_transform(self, p):
-    x = (p[0] + self.x_offset) * self.scale * math.cos(self.rotation) - (p[1] + self.y_offset) * self.scale * math.sin(self.rotation)
-    y = (p[0] + self.x_offset) * self.scale * math.sin(self.rotation) + (p[1] + self.y_offset) * self.scale * math.cos(self.rotation)
+    # x = (p[0] + self.x_offset) * self.scale * math.cos(self.rotation) - (p[1] + self.y_offset) * self.scale * math.sin(self.rotation)
+    # y = (p[0] + self.x_offset) * self.scale * math.sin(self.rotation) + (p[1] + self.y_offset) * self.scale * math.cos(self.rotation)
+    x = (p[0] * self.scale * math.cos(self.rotation) - p[1] * self.scale * math.sin(self.rotation)) + self.x_offset
+    y = (p[0] * self.scale * math.sin(self.rotation) + p[1] * self.scale * math.cos(self.rotation)) + self.y_offset
+    x *= self.global_scale
+    y *= self.global_scale
     return [x, y]
 
   # Translate from plot coordinates to grid cell coordinates
   def plot_to_hex_transform(self, p):
-    x = ( ( (p[0] * math.cos(self.rotation)) + (p[1] * math.sin(self.rotation)) ) / self.scale ) - self.x_offset
-    y = ( ( -(p[0] * math.sin(self.rotation)) + (p[1] * math.cos(self.rotation)) ) / self.scale ) - self.y_offset
+    p = [coord / self.global_scale for coord in p]
+    # x = ( ( (p[0] * math.cos(self.rotation)) + (p[1] * math.sin(self.rotation)) ) / self.scale ) - self.x_offset
+    # y = ( ( -(p[0] * math.sin(self.rotation)) + (p[1] * math.cos(self.rotation)) ) / self.scale ) - self.y_offset
+    x = ( ( (p[0] - self.x_offset) * math.cos(self.rotation)) + ( (p[1] - self.y_offset) * math.sin(self.rotation)) ) / self.scale
+    y = ( ( -(p[0] - self.x_offset) * math.sin(self.rotation)) + ( (p[1] - self.y_offset) * math.cos(self.rotation)) ) / self.scale
     y /= np.sqrt(0.75)
     return [x, y]
 
@@ -119,13 +127,18 @@ class Grid_Cell:
     closest_peak = self.find_closest_peak(pos)
     x_p, y_p = closest_peak
     mvn = multivariate_normal(mean=(x_p, y_p), cov=self.cov)
+    print('\tClosest peak at:', x_p, y_p)
+    print('\tCov:', self.cov)
+    print('\tMvn:', mvn.pdf(pos))
+    print('\tMax activity:', self.max_activity)
+    print('\tActivity:', mvn.pdf(pos) / self.max_activity)
     activity = mvn.pdf(pos) / self.max_activity  # Normalize so all activity in [0, 1]
-    if activity < 0.1:
+    if activity < self.activity_cutoff:
       return 0
     else:
       return activity
 
-  def plot_grid_lines(self, x_range, y_range, color='lightgray', ax=None):
+  def plot_grid_lines(self, x_range, y_range, color='blue', zorder=1, ax=None):
     # Indices relative to grid-cells
     # Do this to find range of firing peaks to plot
     grid_x_range, grid_y_range = self.grid_indices_range(x_range, y_range)
@@ -139,17 +152,17 @@ class Grid_Cell:
         x_, y_ = plt_indices[i, j]
         x_r, y_r = plt_indices[i, j+1]
         x_u, y_u = plt_indices[i+1, j]
-        ax.plot([x_, x_r], [y_, y_r], '-', alpha=0.2, color=color, markersize=5)
-        ax.plot([x_, x_u], [y_, y_u], '-', alpha=0.2, color=color, markersize=5)
+        ax.plot([x_, x_r], [y_, y_r], '-', alpha=0.2, color=color, markersize=5, zorder=zorder)
+        ax.plot([x_, x_u], [y_, y_u], '-', alpha=0.2, color=color, markersize=5, zorder=zorder)
         if grid_indices[i, j, 1] % 2 == 0:
           x_dr, y_dr = plt_indices[i+1, j+1]
-          ax.plot([x_, x_dr], [y_, y_dr], '-', alpha=0.2, color=color, markersize=5)
+          ax.plot([x_, x_dr], [y_, y_dr], '-', alpha=0.2, color=color, markersize=5, zorder=zorder)
           if j > 0:
             x_dl, y_dl = plt_indices[i+1, j-1]
-            ax.plot([x_, x_dl], [y_, y_dl], '-', alpha=0.2, color=color, markersize=5)
+            ax.plot([x_, x_dl], [y_, y_dl], '-', alpha=0.2, color=color, markersize=5, zorder=zorder)
 
   # Plot firing peaks for grid cellx
-  def plot_peaks(self, x_range, y_range, color='blue', contours=False, pos=None, fig=None, ax=None):
+  def plot_peaks(self, x_range, y_range, color='blue', contours=False, pos=None, fig=None, zorder=2, ax=None):
     # Indices relative to grid-cells
     # Do this to find range of firing peaks to plot
     grid_x_range, grid_y_range = self.grid_indices_range(x_range, y_range)
@@ -161,7 +174,7 @@ class Grid_Cell:
     # Plot peaks
     x = plt_indices[:,:, 0].flatten()
     y = plt_indices[:,:, 1].flatten()
-    ax.scatter(x, y, s=5, color=color)
+    ax.scatter(x, y, s=10, color=color, zorder=zorder)
 
     ax.set_xlim(x_range[0], x_range[1])
     ax.set_ylim(y_range[0], y_range[1])
@@ -185,7 +198,7 @@ class Grid_Cell:
       ax.plot(pos[0], pos[1], 'o', color='red')
       # print('Activity:', self.activity(pos))
 
-  def plot_closest_contour(self, pos, ax=None):
+  def plot_closest_contour(self, pos, alpha=0.5, ax=None):
     if ax is None:
       fig, ax = plt.subplots()
     closest_peak = self.find_closest_peak(pos)
@@ -195,24 +208,29 @@ class Grid_Cell:
     y_r = np.linspace(y - self.scale, y + self.scale, 100)
     X, Y = np.meshgrid(x_r, y_r)
     Z = mvn.pdf(np.dstack((X, Y))) / self.max_activity
-    levels = np.linspace(0.1, 1.0, 10)
-    cont_map = ax.contour(X, Y, Z, levels=levels)
-    return cont_map
+    Z_masked = np.ma.masked_where(Z < self.activity_cutoff, Z)
+    extent = [x_r.min(), x_r.max(), y_r.min(), y_r.max()]
+    im = ax.imshow(Z_masked, extent=extent, origin='lower',
+                   alpha=alpha, cmap='plasma', interpolation='bilinear')
+    # levels = np.linspace(0.1, 1.0, 10)
+    # cont_map = ax.contour(X, Y, Z, levels=levels)
+    return im
 
 
 # Module of Grid Cells
 class GC_Module:
-  def __init__(self, n_cells, x_offsets, y_offsets, rotations, scales, sharpnesses, max_firing_rates=None, colors=None):
+  def __init__(self, n_cells, x_offsets, y_offsets, rotations, scales, sharpnesses, global_scale, max_firing_rates=None, colors=None):
     max_firing_rates = max_firing_rates if max_firing_rates is not None else [8] * n_cells
     self.grid_cells = [Grid_Cell(x_offsets[i], y_offsets[i],
                        rotations[i], scales[i], sharpnesses[i],
-                       max_firing_rates[i]) for i in range(n_cells)]
+                       max_firing_rates[i], global_scale) for i in range(n_cells)]
     self.n_cells = n_cells
     self.x_offsets = x_offsets
     self.y_offsets = y_offsets
     self.rotations = rotations
     self.scales = scales
     self.sharpnesses = sharpnesses
+    self.global_scale = global_scale
     self.max_firing_rates = max_firing_rates
     if colors is None:
       self.colors = []
@@ -225,6 +243,7 @@ class GC_Module:
 
   # Generate Grid Cell activities for given position
   def activity(self, pos):
+    print("Module Activity:")
     return [gc.activity(pos) for gc in self.grid_cells]
 
   # Plot Grid Cell activity
@@ -255,7 +274,7 @@ class GC_Population:
     self.num_modules = num_modules
     self.offsets_per_module = offsets_per_module
     self.global_scale = global_scale
-    self.scales = scales
+    self.scales = scales    # Note: Scales need to be integers
     self.rotations = rotations
     self.sharpnesses = sharpnesses
     self.modules = []
@@ -293,18 +312,18 @@ class GC_Population:
       for j in range(num_modules):
         # Create grid of uniformly spaced offsets
         x_offsets = []
-        s = scales[j] * global_scale
+        s = scales[j]
         offset_step_size = s / offsets_per_module
         base_x_offsets = []
-        for k in range(1, offsets_per_module + 1):
-          base_x_offsets.append((offset_step_size * k) + 10)    # +10 to avoid universal overlap at origin
+        for k in range(0, offsets_per_module):
+          base_x_offsets.append((offset_step_size * k) + 13)    # +10 to avoid universal overlap at origin
 
         y_offsets = []
-        s = scales[j] * global_scale
+        s = scales[j]
         offset_step_size = s*np.sqrt(0.75) / offsets_per_module  # vertical spacing adjusted for hexagonal grid
         base_y_offsets = []
-        for k in range(1, offsets_per_module + 1):
-          base_y_offsets.append((offset_step_size * k) + 10)
+        for k in range(0, offsets_per_module):
+          base_y_offsets.append((offset_step_size * k) + 13)
 
         # Shift offsets to move along hexagonal grid rather than square grid
         mod_x_offsets, mod_y_offsets = np.meshgrid(base_x_offsets, base_y_offsets)
@@ -325,7 +344,7 @@ class GC_Population:
                      1) for k in range(1, self.cells_per_module + 1)]
 
         # Create module
-        self.modules.append(GC_Module(offsets_per_module**2, x_offsets, y_offsets, rotation, scale, sharpness, colors=['purple', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange']))
+        self.modules.append(GC_Module(offsets_per_module**2, x_offsets, y_offsets, rotation, scale, sharpness, global_scale, colors=['purple', 'red', 'green', 'blue', 'cyan', 'magenta', 'orange']))
 
     self.n_cells = sum([m.n_cells for m in self.modules])
     self.max_firing_rates = [8] * self.n_cells   # TODO: Make this scalable like in GC_Module
@@ -337,6 +356,11 @@ class GC_Population:
       activity.extend(m.activity(pos))
     return activity
 
+  # Closest peak at: 0.0 2.6054630710414637
+  # Cov: [[np.float64(1.493827160493827), 0], [0, np.float64(1.493827160493827)]]
+  # Mvn: 0.010983275991753078
+  # Max activity: 0.10654173876399607
+  # Activity: 0.10308895010698553
 
   def plot_peaks(self, x_range, y_range, pos=None, contours=False, fig=None, ax=None):
     if ax is None:
@@ -364,22 +388,20 @@ class GC_Population:
     self.maze_activities = activity
     return activity
 
-  def spike_train_generator(self, sim_time, max_firing_rates):
+  def spike_train_generator(self, sim_time, max_firing_rates: np.ndarray):
     # Note: gc_activity values in range of values [0, 1]
     time_denominator = 1000  # working in ms
     x_range, y_range, n_cells = self.maze_activities.shape
     spike_trains = np.zeros((*self.maze_activities.shape, sim_time))
+    times = np.arange(0, sim_time)
     for i in range(x_range):
       for j in range(y_range):
-        for k in range(n_cells):
-          activity = self.maze_activities[i, j, k]  # in range [0, 1]
-          max_freq = max_firing_rates[k]  # max firing rate for this grid cell
-          spike_rate = activity * max_freq / time_denominator  # spike rate per ms
-          spike_train = np.zeros(sim_time)
-          if spike_rate != 0:
-            step_size = int(1 / spike_rate)  # number of ms between spikes
-            spike_train[::step_size] = 1
-            spike_train[0] = 0  # avoid universal spiking at t=0
-          spike_trains[i, j, k] = spike_train
+        activity = self.maze_activities[i, j, :]  # in range [0, 1]
+        spike_rates = activity * max_firing_rates / time_denominator
+        step_sizes = np.where(spike_rates != 0, (1 / spike_rates).astype(int), sim_time+1)  # avoid division by zero
+        mask = (times[np.newaxis, :] % step_sizes[:, np.newaxis]) == 0
+        mask[:, 0] = False  # avoid universal spiking at t=0
+        spike_trains[i, j, :, :] = mask.astype(int)
+        # del(mask)
     self.maze_spike_trains = spike_trains
     return spike_trains

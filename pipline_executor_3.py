@@ -83,12 +83,10 @@ def run(parameters: dict):
     print("Creating new grid cell population...")
     gc_population = GC_Population(NUM_MODULES, OFFSETS_PER_MODULE, GLOBAL_SCALE, SCALES, ROTATIONS, SHARPNESSES)
     gc_population.grid_cell_activity_generator(MAZE_SIZE)
-    gc_population.spike_train_generator(sim_time=1000, max_firing_rates=gc_population.max_firing_rates)
+    gc_population.spike_train_generator(sim_time=1000, max_firing_rates=np.array(gc_population.max_firing_rates))
     print("Saving grid cell spikes to file:", GRID_SPIKES_FILE_PATH)
     with open(GRID_SPIKES_FILE_PATH, 'wb') as f:
       pkl.dump(gc_population, f)
-    exit()
-
 
   # Initialize Assoc. Cell Population & Spike Trains #
   if os.path.exists(ASSOC_SPIKES_FILE_PATH):  # Load assoc. cell spikes from file if exists
@@ -122,6 +120,7 @@ def run(parameters: dict):
     assoc_population.set_maze_voltages(assoc_voltages)
     with open(ASSOC_SPIKES_FILE_PATH, 'wb') as f:
       pkl.dump(assoc_population, f)
+
   #################### END PHASE 1 ####################
 
   if ONLY_PHASE_1:
@@ -290,7 +289,7 @@ if __name__ == '__main__':
     'num_modules': 5,
     'offsets_per_module': 4,
     'scales': GC_scales,
-    'global_scale': 1,
+    'global_scale': 0.5,
     'rotations': [0, np.pi / 3, np.pi / 5, np.pi*3 / 5, np.pi / 7, np.pi*3 / 7, np.pi / 11],
     'sharpness': 1.5,  # Should *not* go below 1
     'sim_time': 1000,  # ms
@@ -329,7 +328,7 @@ if __name__ == '__main__':
 
     },
     'sparsities': {
-      'in_exc': 0.12,
+      'in_exc': 0.03,
       'in_inh': 0.0,
       'exc_exc': 0.0,
       'exc_inh': 0.0,
@@ -349,6 +348,6 @@ if __name__ == '__main__':
   }
 
   for i in range(50):
-    np.random.seed(i)
+    np.random.seed(637168)
     p["history_file"] = f"7_7_{i}_history.pkl"
     run(p)
